@@ -116,14 +116,13 @@ depth = 30
 num_hidden = 200
 
 learning_rate = 0.01
-training_iterations = 2000
 
 sound_X = tf.placeholder(tf.float32, shape=[None, bands, frames, num_channels], name="sound_x")
 sound_Y = tf.placeholder(tf.float32, shape=[None, num_labels], name="sound_y")
 
-sound_net = tf.layers.conv2d(sound_X, num_hidden, 7, activation=tf.nn.relu)
-sound_net = tf.layers.conv2d(sound_net, num_hidden, 5, activation=tf.nn.relu)
-sound_net = tf.layers.conv2d(sound_net, num_hidden, 3, activation=tf.nn.relu)
+sound_net = tf.layers.conv2d(sound_X, num_hidden, kernel_size, activation=tf.nn.relu)
+# sound_net = tf.layers.conv2d(sound_net, num_hidden, 5, activation=tf.nn.relu)
+# sound_net = tf.layers.conv2d(sound_net, num_hidden, 3, activation=tf.nn.relu)
 sound_net = tf.reduce_mean(sound_net, [1, 2], name='last_pool')
 print(sound_net)
 
@@ -141,11 +140,12 @@ image_net = tf.reduce_mean(image_net, [1, 2], name='last_pool')
 print(image_net)
 net = tf.concat([image_net, sound_net], axis=0)
 
-net = tf.layers.dense(net, 4096, activation=tf.nn.relu)
+net = tf.layers.dense(net, 256, activation=tf.nn.relu)
 
-net = tf.layers.dense(net, 2048, activation=tf.nn.relu)
-net = tf.layers.dense(net, 512, activation=tf.nn.relu)
+net = tf.layers.dense(net, 128, activation=tf.nn.relu)
+net = tf.layers.dense(net, 64, activation=tf.nn.relu)
 logits = tf.layers.dense(net, num_labels)
+logits_l2norm = tf.nn.l2_normalize(logits, axis=1)
 y_ = tf.nn.softmax(logits)
 Y = tf.concat([image_Y, sound_Y], axis=0)
 loss_op = tf.reduce_mean(
@@ -218,6 +218,7 @@ from sklearn.utils import shuffle
 
 idxs = shuffle(list(range(len(image_dataset))), random_state=100)
 t_cnt = int(len(idxs) * 0.9)
+
 img_trx = image_dataset[idxs[:t_cnt]]
 img_tex = image_dataset[idxs[t_cnt:]]
 img_try = image_labels[idxs[:t_cnt]]
@@ -235,12 +236,13 @@ if not os.path.exists("sound_dataset.npy"):
 else:
     sound_dataset = np.load("sound_dataset.npy")
     sound_labels = np.load("sound_labels.npy")
-
-    # f_shapes = list(np.shape(features))
-    # f_shapes[-1] = 1
-    # features = np.concatenate((features, np.zeros(f_shapes)), axis=3)
-    # print(type(features), features.shape)
-    # print(np.unique(labels, axis=1))
+print("dd", len(image_dataset))
+print(len(sound_dataset))
+# f_shapes = list(np.shape(features))
+# f_shapes[-1] = 1
+# features = np.concatenate((features, np.zeros(f_shapes)), axis=3)
+# print(type(features), features.shape)
+# print(np.unique(labels, axis=1))
 
 idxs = shuffle(list(range(len(sound_dataset))), random_state=100)
 t_cnt = int(len(idxs) * 0.9)
@@ -249,6 +251,8 @@ sound_tex = sound_dataset[idxs[t_cnt:]]
 sound_try = sound_labels[idxs[:t_cnt]]
 sound_tey = sound_labels[idxs[t_cnt:]]
 
+# training_iterations = 1600
+training_iterations = 5000
 # random sampling
 with tf.Session() as session:
     tf.global_variables_initializer().run()
@@ -280,6 +284,37 @@ with tf.Session() as session:
                                                          sound_X: sound_tex[i * batch_size:i * batch_size + batch_size],
                                                          sound_Y: sound_tey[
                                                                   i * batch_size:i * batch_size + batch_size]}))
+
+    # test_steps = len(img_tey) // batch_size
+    # test_results = []
+    # for i in range(test_steps):
+    #     results = session.run([accuracy, loss_op, logits_l2norm],
+    #                           feed_dict={
+    #                               image_X: img_tex[i * batch_size:i * batch_size + batch_size],
+    #                               image_Y: img_tey[i * batch_size:i * batch_size + batch_size],
+    #                               sound_X: sound_tex[i * batch_size:i * batch_size + batch_size],
+    #                               sound_Y: sound_tey[
+    #                                        i * batch_size:i * batch_size + batch_size]})
+    #     test_results.append(results[2])
+    # image_embedding = np.concatenate(
+    #     (test_results[0][:batch_size // 2], test_results[1][:batch_size // 2], test_results[2][
+    #                                                                            :batch_size // 2]), axis=0)
+    # sound_embedding = np.concatenate(
+    #     (test_results[0][batch_size // 2:], test_results[1][batch_size // 2:], test_results[2][
+    #                                                                            batch_size // 2:]), axis=0)
+    # image_labeling = img_tey[:batch_size * 3]
+    # sound_labeling = sound_tey[:batch_size * 3]
+    #
+    # print(len(image_embedding))
+    # print(len(sound_embedding))
+    # print(len(image_labeling))
+    # print(len(sound_labeling))
+    #
+    # from sklearn.decomposition import PCA
+    #
+    # pca = PCA(n_components=2)
+    # image_pca = pca.fit_transform(image_embedding)
+    # sound_pca = pca.fit_transform(sound_embedding)
     # fig = plt.figure(figsize=(15, 10))
     # plt.plot(cost_history)
     # plt.axis([0, training_iterations, 0, np.max(cost_history)])

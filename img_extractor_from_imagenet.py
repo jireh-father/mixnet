@@ -3,15 +3,15 @@ import glob, os, random, shutil
 # dog[n02085620,n02113978]
 # car[]
 
-is_range = False
+is_range = True
 
-output_path = "D:\\data\\mixnet\\dog_and_car_sound_and_image\\image\\car"
+output_path = "D:\\data\\mixnet\\dog_and_car_sound_and_image\\image\\dog"
 dir_from = "n02085620"
 dir_to = "n02113978"
 
 dirs = ["n02701002", "n03769881", "n03770679", "n04285008", "n04487081", "n04461696", "n04467665"]
 
-img_cnt = 1000
+img_cnt = 3460
 
 img_dir = "D:\\data\\imagenet\\torrent\\ILSVRC2012_img_train"
 
@@ -32,5 +32,7 @@ for target_dir in dirs:
     random.shuffle(img_files)
     for selected_file in img_files[:img_cnt_per_dir]:
         print(selected_file)
+        if os.path.exists(os.path.join(output_path, os.path.basename(selected_file))):
+            print("skip")
+            continue
         shutil.copy(selected_file, os.path.join(output_path, os.path.basename(selected_file)))
-
